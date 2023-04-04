@@ -1,4 +1,4 @@
-​	自我介绍：
+	自我介绍：
 
 面试官们好，我叫但磊，本科毕业，在上家公司做的项目，主要是用vue3+ts的技术栈，我上一个做的项目是一个电商平台的后台管理系统，主要是负责品牌管理模块，spu管理和sku管理模块的开发，我做这些模块主要使用element-plus来搭建页面，因为有公共的数据，我就用了跟vue3配套的pinia来管理页面的数据，用axios去封装了一下请求接口等等
 
@@ -64,7 +64,7 @@ number、string、boolean、null、undefined、symbol、bigint
 
 ​		返回值：true||false
 
-​		优点：判断数据类型非常精确，不存在误判的问题
+​		优点：判断                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            数据类型非常精确，不存在误判的问题
 
 ​		缺点：只能告知A是不是B数据类型，无法告知具体哪一类
 
@@ -1144,7 +1144,7 @@ __注意:面试中,如果说到性能优化,一定要说没用之前有什么问
 
 ​	4、如果满足流程1中传入的选择器字符串，那么就使用call方法调用流程1中传入的事件处理器，否则不调用
 
-###  在哪儿使用过时间委托
+###  在哪儿使用过事件委托
 
 ​	前台项目的三级列表中会使用到
 
@@ -1402,3 +1402,441 @@ function ajax(url) {
 }
 ```
 
+##  axios二次封装
+
+###  配置通用的基础路径和超时时间
+
+1、基础路径可以延伸到proxy规则，以及跨域相关内容
+
+​		开发阶段的时候，基础路径baseURL一般写的是开发服务器代理的一个路径，来方便转发给其他服务器，因为浏览器存在跨域的限制，无法直接发http请求，而服务器没有这个限制，所以我们一般是通过开发服务器代替往其他服务器发请求，这里就需要用到proxy去配置代理服务，它会将我们指定的路径的请求，转发到我们想要请求的服务器那里去，所以我们二次封装的时候，基础路径也得写这个指定的路径
+
+2、超过时间可以延伸到请求并发数量问题，以及网络性能优化相关
+
+​	1、小程序最多同时并发10个请求，Chrome和Firefox最多并发6个
+
+​	2、超过时间就是为了防止部分请求占用请求通道时间过长，降低项目性能
+
+​		所以一旦达到了超时时间，那么该请求就会被视为失败，状态码404
+
+###  显示请求进度条
+
+1、显示进度条：请求拦截器回调
+
+2、结束进度条：响应拦截器回调
+
+###  成功的响应回调
+
+成功返回的数据不再是response,而是直接将响应体数据的response.data返回
+
+###  失败的回调
+
+统一处理请求错误，具体请求也可以选择处理或不处理
+
+###  每个请求自动携带userTempId的请求头：在请求拦截器中实现
+
+1、uuid是根据当前电脑生成的一个临时凭证
+
+2、如果用户没有登陆，但是想要将商品加入购物车，那么服务器就会根据uuid，临时创建一个购物车用于存储商品信息
+
+###  如果当前有token，自动携带token的请求头
+
+1、token是根据用户的唯一标识id，生成的一个乱码字符串(相当于是用户的身份证明)
+
+2、如果用户已经登录了， 想要将商品加入购物车，那么服务器就会根据token，解析得到用户的id，然后将商品添加到用户的私人购物车中
+
+3、扩展：如果用户发请求的时候，同时具有uuid和token，那么临时购物车的内容会合并入私人购物车中
+
+###  对token过期的错误进行处理
+
+1、token是否过期一定是后端判断的
+
+2、token其实是根据用户的id+创建时间+特殊的字符串(盐)，再经过加密得到的一个字符串
+
+3、如果服务器判断token已经过期，那么不会返回任何数据，只会返回响应，状态码为401
+
+​			1、与钱有关的，一般5-15分钟换一个新的
+
+​			2、与钱无关的，一般7-15天换一个新的
+
+```js
+import axios from 'axios'
+import NProgress from 'nprogress'
+import 'nprogress/nprogress'
+import store from '@/store'
+import router from '@/router'
+import { v4 as uuidv4 } from 'uuid'
+
+NProgress.configure({ showSpinner: false }) // 隐藏右侧的旋转进度条
+
+// 创建instance
+const instance = axios.create({
+  baseURL: '/api',
+  timeout: 20000
+})
+
+// 指定请求拦截器
+instance.interceptors.request.use(config => {
+  NProgress.start()
+  
+  const userTempId = uuidv4()
+  config.headers.userTempId = userTemId
+  
+  const userTempId = uuidv4()
+  config.headers.userTempId = userTempId
+  
+  const token = store.state.user.token
+  if (token) {
+    config.headers.token = token
+  }
+  
+  return config 
+})
+
+// 指定响应拦截器
+instance.interceptors.response.use(
+	response => {
+    NProgress.done()
+    
+    return response.data
+  },
+  async error => {
+    NProgress.done()
+    
+    const { response } = error
+    if(response && response.status) {
+      if(response.status === 401) {
+        if(router.currentRoute.path!=='/login') {
+          await store.dispatch('logout')
+          
+          router.replace('/login')
+          
+          message.error('登陆已过期，请重新登陆')
+        }
+      } else {
+        message.error('请求出错：' + error.message || '未知错误')
+      }
+    } else if{
+      message.error('您的网络发生异常，无法连接服务器')
+    }
+    
+    return Promise.reject(error)
+  }
+)
+
+// 向外暴露instance
+export default instance
+```
+
+##  Restless API 与 Restful API 
+
+###  Restless API 
+
+- 传统的API，把每个url当作一个功能操作，例如：/deleteUser,/addUser./getUser,
+- 同一个url,后台只进行CRUD的某一种操作
+- 请求方式不决定请求的CRUD操作
+- 一个请求路径只对应一个操作
+- 一般只有GET/POST
+
+###  Restful API
+
+- 新式的API，把每个url当作一个唯一资源，/users
+- 同一个url，可以通过不同类型的请求对后台资源数据进行CRUD四种操作
+- 请求方式来决定了请求在后台进行CRUD的哪种操作
+  - GET：查询
+  - POST：添加
+  - PUT：更新
+  - DELETE：删除
+- 同一个请求路径可以进行多个操作
+- 请求方式会用到GET/POST/PUT/DELETE
+- 测试：可以使用json-server快速搭建模拟的rest api接口
+
+## 前端数据存储
+
+###  存储方式
+
+- cookie
+- sessionStorage
+- localStorage
+
+###  cookie
+
+- 本身用于浏览器和Server通讯
+- 被“借用”到本地存储
+- 可用document.cookie读取或保存
+- 可以利用cookies工具库简化编码
+
+###  cookie的缺点
+
+- 存储大小有限，最大4KB
+- http请求时会自动发送给服务器，增加了请求的数据量
+- 原生的操作语法不太方便操作cookie
+- 浏览器可以设置禁用
+- 服务器可以禁止浏览器读取和修改cookie
+
+###  localStorage与sessionStorage
+
+- 相同点：
+  - 纯浏览器端存储，大小不受限制，请求时不会自动携带
+  - 只能保存文本，如果是对象或数组，需要转换为JSON
+  - API相同：
+    - setItem(key,value)
+    - getItem(key)
+    - removeItem(key)
+  - 浏览器不能禁用
+- 不同点：
+  - localStorage保存在本地文件中，除非编码或手动删除，否则一直存在
+  - sessionStorage数据保存在当前会话内存中，关闭浏览器则清除
+
+###  区别cookie与localStorage和sessionStorage
+
+以上三者都是浏览器用户存储数据的一部分，都可以成为浏览器的本地存储最早出现的cookie，之后推出HTML5新特性的时候，才有了后续两个内容
+
+1、生命周期
+
+​	cookie：设置了max-age属性，如果没有超过最大存活时间的设置，数据将会一直存活，不设置max-age属性，那么当前cookie就是会话级cookie,存储的数据会在标签页或者浏览器关闭的时候，自动销毁。
+
+​	localStorage(持久化存储)
+
+​		存在它身上的数据，只要不主动删除，就会永久存在
+
+​	sessionStorage(会话级存储)
+
+​		存在他身上的数据，如果关闭当前标签页或者浏览器，存储的数据就会丢失
+
+2、存储位置
+
+​	cookie
+
+​		设置了max-age属性，存储于硬盘中
+
+​		不设置max-age属性，存储于内存中
+
+​	localStorage(持久化存储)
+
+​		存储于硬盘中
+
+​	sessionStorage(会话级存储)
+
+​		存储于内存中
+
+3、存储大小
+
+​	cookie->4KB
+
+​	localStorage -> 一般主流浏览器都是5MB，IE只有3012KB
+
+​	sessionStorage -> 一般主流浏览器都是5MB，IE只有3012KB
+
+4、使用范围
+
+​	cookie
+
+​		它的使用范围受到path和domain属性的控制
+
+​		domain属性
+
+​			假设domain = "www.baidu.com"
+
+​			代表当前这个cookie，可以被当前域名以及他衍生出来的子域名使用
+
+​		path属性
+
+​			假设path = "/a"
+
+​			代表当前这个cookie，可以被当前域名以及他衍生出来的子域名使用
+
+​		总结：儿子可以使用父亲的cookie，父亲不能使用儿子的
+
+​		扩展：HttpOnly属性的作用
+
+​		回答：服务器可以给cookie添加该属性，可以限制前端页面读取使用该cookie
+
+​	localStorage
+
+​		它的使用范围和域名绑定
+
+​			即便是不同的标签页，只要域名相同，也可以共享localStorage的数据
+
+​			多个标签页会共享同一份数据，一边修改，所有页面的都会变化
+
+​	sessionStorage
+
+​		他的使用范围和域名以及标签页绑定
+
+​			该方案无法实现多个标签共享一份数据
+
+​			即便是复制标签页，他们两个的sessionStorage也不是同一份，是两份独立的数据
+
+5、与服务器之间的关系
+
+​	cookie(被借用的本地存储)
+
+​        cookie是服务器创建,浏览器存储的
+
+​        服务器会在响应头中,添加Set-Cookie属性,来将需要存储的cookie数据,发送给前端浏览器
+
+​        浏览器会在请求头中,添加Cookie属性,来讲需要发送的cookie数据,发送给后端服务器
+
+​        浏览器会自动存储cookie,还会自动发送cookie
+
+​      localStorage
+
+​        与服务器不熟,没有关系
+
+​      sessionStorage
+
+​        与服务器不熟,没有关系
+
+6、使用场景
+
+​	cookie
+
+​		前端开发这块不常用，主要是给后端人员使用的
+
+​		内部一般会保存一些用户的历史记录，用户个人头像，昵称，token标识等数据
+
+​	localStorage
+
+​        如果有些数据,下次启动项目还想使用,那就选择是用localStorage
+
+​        比如,项目中,实现七天免登陆功能时,会使用到
+
+​          1.我们会将用户第一次登陆的token数据保存在localStorage中
+
+​          2.当用户第二次进行项目的时候,不需要用户再次前往login页面,手动登录
+
+​            我们会使用axios将上次保存的token数据,发送给info接口,兑换用户个人信息
+
+​          3.最终将请求得到的个人信息,展示在页面上
+
+​      sessionStorage
+
+​        sessionStorage相比于localStorage各方面都有差距,但是唯独他是存储于内存中
+
+​          他所有的操作都是内存级别的操作,速度非常快
+
+​            内存和硬盘的操作速度,差距甚至能达到万倍
+
+​        如果有一个数据,是本次项目运行到时候,需要使用到的,那么选择使用sessionStorage
+
+​          例如:将用户本次登录的token保存起来,然后用于发送请求等操作
+
+​        扩展:如果刷新当前页面,存储于sessionStorage中的数据不会丢失,Vuex的会丢失
+
+ ###  面试题:如何实现跨标签页通信?
+
+​    回答:
+
+​      前言:想要发送数据的网页称为A页面,需要接收数据的网页称为B页面
+
+​      1.使用localStorage和storage事件来实现
+
+​        1.在B页面,给window对象,绑定事件storage,并传入回调函数
+
+​          用于监视其余标签页对localStorage的新增和修改
+
+​        2.在A页面,使用localStorage.setItem(key,value),将数据存入到localStorage中
+
+​        3.此时会触发B页面的storage事件的回调函数,执行内部代码,可以通过event对象,
+
+​          获取到当前存储的属性名和新/旧属性值
+
+​        特点:传递数据次数不限,最多一次性传入5MB的数据,使用麻烦程度属于中等,
+
+​          由于localStorage与域名有关,所以只有同一个域名才能互相通信
+
+​      2.使用路径传参
+
+​        1.A页面可以使用window.open方法,跳转一个全新的标签页
+
+​          在跳转的路径中,可以使用query将数据放入URL中
+
+​        2.跳转到B页面的时候,B页面可以通过window.location.search属性,获取到路径中的参数
+
+​        特点:使用麻烦程度属于简单,传递数据次数1次(与跳转次数有关),
+
+​          由于url具有长度限制,所以传递数据量最小,
+
+​          可以跟任何网站实现数据通信
+
+​      3.使用domain属性实现
+
+​        1.在A页面中,使用window.open方法,打开一个全新的网页
+
+​          通过open方法,可以获取到打开B页面的window对象(简称w1)
+
+​        2.在A和B页面中,都执行document.domain="共同的顶级域名"
+
+​        3.在B页面中,给自己的window对象,添加属性和属性值
+
+​        4.在A页面中,就可以通过流程1中,得到的w1对象,获取到B页面存储的数据,
+
+​          也可以对其进行修改
+
+​        特点:使用麻烦程度属于高级,传递数据次数无限,传递数据量最大(与用户电脑内存大小有关),
+
+​          可以与自家公司不同的项目实现数据通信
+
+​      使用场景选择:
+
+​        1.如果是自己项目组的项目开两个标签页,互相通信,
+
+​          就选择使用方案1
+
+​        2.如果是自己公司中多个项目组的项目互相通信.
+
+​          就选择使用方案3
+
+​        3.如果是自己公司与其他公司的项目互相通信,
+
+​          就选择使用方案2
+
+##  HTTP1.0和HTTP1.1区别
+
+### 	1.缓存处理
+
+​			HTTP1.1相较于HTTP1.0,引入了更多缓存控制策略
+
+### 	2.带宽优化及网络连接的使用
+
+### 	3.错误通知的管理
+
+​			在HTTP1.1中新增了24个错误状态响应码，如409（Conflict）表示请求的资源与资源的当前状态发生冲突；410（Gone）表示服务器上的某个资源被永久性的删除。
+
+### 	4.Host头处理
+
+​			在HTTP1.1中,每个请求和响应都必须有HOST属性
+
+### 	5.长连接
+
+​			HTTP 1.1支持长连接（PersistentConnection）和请求的流水线（Pipelining）处理，在一个TCP连接上可以传送多个HTTP请求和响应，减少了建立和关闭连接的消耗和延迟，在HTTP1.1中默认开启Connection： keep-alive
+
+​	**扩展:**
+
+​	1.**之前所说的请求并发数,指的就是这个长连接通道,最多可以与一个服务器建立6个通道**
+
+​	2.**通道一般可以保持30s,这个数字可以修改,是服务器控制的**
+
+​	**文章:https://blog.csdn.net/qq_42033567/article/details/107804152**
+
+## HTTP和HTTPS的区别
+
+​	1.HTTPS协议需要到CA申请证书，一般免费证书很少，需要交费
+
+​	2.HTTP协议运行在TCP协议之上，所有传输的内容都是明文，HTTPS运行在SSL/TLS之上，SSL/TLS运行在TCP之上，所有传输的内容都经过加密的
+
+​	3.HTTP和HTTPS使用的是完全不同的连接方式，用的端口也不一样，前者是80，后者是443。
+
+​	4.HTTPS可以有效的防止运营商劫持(DNS劫持)，解决了劫持的一个大问题。
+
+
+
+## HTTP2.0和HTTP1.1相比的新特性
+
+​	1.新的二进制格式,解析模式从原本的文本解析,变更为二进制解析
+
+​	2.多路复用,一个请求可以请求多个资源
+
+​	3.header压缩,通讯双方都缓存一份header,后续传输即可省略该部分
+
+​	4.服务器推送
