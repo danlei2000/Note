@@ -1675,7 +1675,7 @@ export default instance
 
 ​        服务器会在响应头中,添加Set-Cookie属性,来将需要存储的cookie数据,发送给前端浏览器
 
-​        浏览器会在请求头中,添加Cookie属性,来讲需要发送的cookie数据,发送给后端服务器
+​        浏览器会在请求头中,添加Cookie属性,来将需要发送的cookie数据,发送给后端服务器
 
 ​        浏览器会自动存储cookie,还会自动发送cookie
 
@@ -1791,6 +1791,70 @@ export default instance
 
 ​          就选择使用方案2
 
+
+
+### 从输入url到渲染出页面的整个过程
+
+1. DNS 解析
+   1. 域名:
+      1. 为了方便使用者记住该网站,相当于降低了推广成本
+      2. 域名不仅没有优化性能,反而是劣化性能
+   2. DNS解析的目的,就是将域名转换成对应的服务器IP地址
+
+- 浏览器 DNS 缓存
+- 计算机 DNS 缓存
+- 路由器 DNS 缓存
+- 网络运营商 DNS 缓存
+- 递归查询
+
+2. TCP 链接：TCP 三次握手  ===> 建立连接
+
+- 客户端发送服务端：我准备好了，请你准备一下
+- 服务端发送客户端：我也准备好了，请你确认一下
+- 客户端发送服务端：确认完毕
+
+![TCP三次握手_通俗版](C:/Users/但磊/Desktop/精讲gitee/SZ220829_review/01.课件/note/images/TCP三次握手_通俗版.jpeg)
+
+3. 发送请求
+
+- 将请求报文发送过去
+
+4. 返回响应
+
+- 将响应报文发送过来
+
+5. 解析渲染页面
+
+- 遇到 HTML，调用 HTML 解析器，解析成 DOM 树
+- 遇到 CSS，调用 CSS 解析器，解析成 CSSOM 树
+- 遇到 JS，调用 JS 解析器，解析 JS 代码
+  - 可能要修改元素节点，重新调用 HTML 解析器，解析更新DOM 树
+  - 可能要修改样式节点，重新调用 CSS 解析器，解析更新 CSSOM 树
+- 将 DOM + CSSOM = Render Tree
+- **layout 布局(排版)：计算元素的位置和大小信息**
+  - **重排:重新排版,如果一个元素的位置,大小发生变化,会导致其余元素也发生变化,就会发生重新排版操作**
+- **render 渲染：将颜色/文字/图片等渲染上去**
+  -  **重绘:重新绘制,如果元素的颜色,文字等信息,放生变化,不影响到其余元素的布局,就会发生重新绘制操作**
+  -  **重排一定会有重绘,重绘不一定会出现重排**
+  -  **扩展:**
+     - **问题:重绘的范围有多大?**
+     - **回答:浏览器的重绘范围是整个图层中所有的元素**
+       - **如果有某些元素会频繁变化,就将他单独放置在一个图层中**
+       - **可以给这个元素添加will-change属性(css样式),可以让他单独处于一个图层中**
+       - **本身就具有图层的元素,canvas,video这些都有**
+
+6. 断开链接：TCP 四次挥手
+   (断开请求链接 2 次, 断开响应链接 2 次)
+
+- 客户端发送服务端：请求数据发送完毕，可以断开了
+- 服务端发送客户端：请求数据接受完毕，可以断开了
+- 服务端发送客户端：响应数据发送完毕，可以断开了
+- 客户端发送服务端：响应数据接受完毕，可以断开了
+
+![四次挥手_通俗版](C:/Users/但磊/Desktop/精讲gitee/SZ220829_review/01.课件/note/images/四次挥手_通俗版.jpeg)
+
+
+
 ##  HTTP1.0和HTTP1.1区别
 
 ### 	1.缓存处理
@@ -1840,3 +1904,580 @@ export default instance
 ​	3.header压缩,通讯双方都缓存一份header,后续传输即可省略该部分
 
 ​	4.服务器推送
+
+##  防抖和节流
+
+###  防抖和节流是什么？
+
+防抖和节流不是浏览器提供的功能，他们是开发者，在开发过程中研究出来的一种特殊的代码写法，他们是一种提高代码性能的代码风格
+
+###  为什么要使用防抖和节流？
+
+问题：没有防抖和节流之前，按钮连续点击多次，触发多次事件，执行多次事件回调函数，
+
+我们经常会在事件中，做发送请求之类的事情，所以我们需要降低请求的发送频率，减少后端服务器的压力
+
+总结：我们使用防抖和节流可以降低一个函数的执行频率
+
+
+
+防抖：在一段时间之内，如果想要连续触发多次回调函数，那么最终只有最后一个回调函数会触发，也就是说,想要成功触发第一次回调函数,必须在该函数开启一段时间内,不能在开启第二次
+
+节流:在一段时间之内,如果想要连续触发多次回调函数,那么最终只有第一个回调函数会触发
+
+​        也就是说,想要成功触发第二次回调函数,必须与第一次触发间隔超过规定时间
+
+###  区别:
+
+​        1.函数的执行时机
+
+​          节流->立即执行回调函数
+
+​          防抖->会延迟回调函数的执行时间
+
+
+
+​        2.数据时效性不同
+
+​          节流->数据时效性很差,使用的都是旧数据
+
+​          防抖->数据时效性很好,使用的都是最新的数据
+
+###  怎么使用防抖和节流?
+
+​      如以下代码所示
+
+
+
+###  在哪使用过防抖和节流?
+
+​      节流的使用场景
+
+​        例如:login页面的登录按钮
+
+​          我们可以限制用户在一段时间之内的触发登录接口的频率
+
+
+
+​      防抖的使用场景
+
+​        例如:搜索框的单词联想功能
+
+​          如果用户输入了关键字,我们会使用防抖来获取最新的数据,从而发送请求
+
+​            如果用户连续输入,那么第二次触发就会取消第一次触发
+
+```js
+//以下代码是节流代码
+    function throttle(callback,delay){
+        let startTime = 0;
+        return function(){
+            // 这个全新的匿名函数,才是真正的事件回调函数
+            // console.log(111)
+
+            if(Date.now() - startTime > delay){
+                startTime = Date.now();
+                callback();
+            }
+        }
+    }
+
+    
+
+    //以下代码是防抖代码
+    btn.onclick = debounce(cb,2000)
+
+    function debounce(callback,delay){
+        let timer;
+        return function(){
+            if(timer){
+                clearTimeout(timer);
+            }
+            timer = setTimeout(()=>{
+                callback();
+            },delay)
+        }
+    }
+```
+
+##  文件上传
+
+###  文件上传整体流程:
+
+​      1.浏览器需要将图片从电脑的硬盘中,读取到当前浏览器的内存中存放
+
+​        使用input[type=file]标签,才可以读取用户的本地文件
+
+​        个人理解,浏览器只提供一种读取文件的方案,是为了保证用户本地数据的安全性
+
+​      2.使用请求,将浏览器内存中的图片,发送给服务器,最终保存在服务器的硬盘中
+
+​        服务器会返回一个图片的网络链接,方便互联网上所有人访问
+
+
+
+
+
+###  小文件上传流程:
+
+​      1.从页面上,找到input[type=file]标签,给他绑定事件,用于监视用户读取文件操作
+
+​        事件名:change
+
+​      2.从事件回调函数的this.files中,读取到本次用户选中的文件信息
+
+​      3.创建formData对象,并使用append语法,将file对象插入formData中
+
+​      4.将formData对象,作为请求体参数,发送给指定服务器
+
+​      5.将返回的在线链接,传给页面上的某个img标签,作为他的src进行展示
+
+```js
+ const file = document.querySelector('#file');
+
+    file.onchange = async function(){
+        // File对象其实就是内存中文件的代理对象
+        // 他就代表着那个文件,由于文件存储是二进制存储的,所以即便输出给开发者,也看不懂,
+        // 所以浏览器专门提取了一些重要信息,给用户观看,这就是File对象
+        // console.log(this.files[0])
+
+        const file = this.files[0];
+
+        // FormData函数是浏览器自带的
+        const formData = new FormData();
+
+        // 属性名是根据接口文档来写的,本次的属性名是file
+        formData.append('file',file);
+
+        const result = await axios.post('http://localhost:3000/upload',formData);
+
+        // console.log(result)
+
+        const img = document.querySelector('#avatar');
+        img.src=`http://localhost:3000${result.data}`;
+    }
+```
+
+ ###  大文件分段上传功能
+
+  函数介绍:
+
+   uploadOne
+
+​    将一个文件传给该函数,就可以实现这个文件的上传功能
+
+​     也就是说想要发送一个文件,就调用一次这个函数
+
+   upload
+
+​    它可以从需要上传的文件中,切割出一部分的内容(2MB),
+
+​    然后通过axios发送给后端
+
+   getHash
+
+​    它可以接收一个文件对象,然后根据文件对象的内容,生成一个唯一的hash值
+
+​    只要文件内容相同,那么生成的hash值也一定相同
+
+  ####  什么是大文件分段上传?
+
+   用户可能在使用项目的过程中,需要上传写大文件,例如视频,音频等
+
+​    但是由于服务器那边最多一次只能接受2MB的数据,所以我们需要将一个文件切成多部分,
+
+​    然后多次发送,最终在服务器端拼装起来
+
+  ####  流程思路:
+
+   1.使用input[type=file]标签,让用户找到需要上传的文件,
+
+​    让浏览器将其从硬盘中,读取到自己的内存中
+
+   2.通过change事件,可以监视到用户读取文件的操作,并在回调函数中,通过this.files伪数组
+
+​    可以获取到当前用户上传的文件,如果是单个文件就是下标0存储的数据
+
+   3.将需要上传的文件,传入uploadOne函数中,实现上传功能
+
+   4.在uploadOne函数中,
+
+​    -调用getHash方法,生成当前文件的唯一hash值
+
+​    -准备filename,将原本的文件名通过.进行切割,在名称中拼接当前时间戳,生成一个全新的文件名
+
+​    -计算出2MB对应多少字节?
+
+​     2*1024*1024
+
+​      1 MB = 1024 KB
+
+​      1 KB = 1024 B
+
+​    -计算出当前一共需要切割成多少份进行发送?
+
+​     通过 文件总大小/2MB的大小可以得知需要切割为多少份
+
+​    -调用upload方法,来发送当前部分文件
+
+​    -在upload方法中,
+
+​     -计算开始/结束下标
+
+​      start = 2MB大小 * 下标
+
+​      end = 2MB大小 * (下标+1)
+
+​       如果本次分享的结尾还没有超过当前文件最大值,那么就发送到本次的结尾
+
+​       如果本次分享的结尾已经超过了当前文件的最大值,那么就发到文件最大值即可
+
+​     -创建formData对象,并将需要发送给服务器的数据,append到该对象中
+
+​      -hash值
+
+​      -data数据
+
+​      -total总份数
+
+​      -index当前是第几份
+
+​      -filename文件名称
+
+​     -使用axios.post方法,将formData对象发送给公司指定服务器
+
+​     -每次发送成功都记录成功的份数,如果文件还没有全部发送结束,就继续递归发送,直到发完为止
+
+ ####  断点续传功能思路:
+
+  1.在发送文件之前,先将当前文件的hash值发送给服务器
+
+  2.那么服务器就会返回这个hash对应的文件上传情况
+
+   -这个文件从来没上传过,返回前端,告知没有上传过,那么我们就将index变量的值设置为0
+
+   -这个文件之前上传过一部分,返回前端,告知该文件上次的进度下标,那么我们就将index变量的值设置为上次进度+1
+
+   -这个文件之前上传结束了,返回前端,告知上传完成
+
+​    这就是秒传功能
+
+```js
+ $('#uploaderInput').on('change',function(){
+    // console.log(this)
+    const file = this.files[0];
+
+    uploadOne(file)
+
+    // for (let index = 0; index < this.files.length; index++) {
+    //   const file = this.files[index];
+      
+    //   uploadOne(file)
+    // }
+  })
+
+  async function uploadOne(file){
+    if(!file)return;
+
+    // 生成当前文件的唯一标识hash值
+    // 只要文件内容相同,生成的hash值也一定相同
+    // 生成hash值的目的,是为了服务器检查文件是否有缺失
+    const hash = await getHash(file);
+
+    const i = file.name.lastIndexOf('.');
+
+    const filename = file.name.slice(0,i) + new Date().getTime() + file.name.slice(i)
+    
+
+    // 这是每次需要分享的文件大小
+    const shareSize = 2 * 1024 * 1024;
+
+    // 获取当前文件的总大小
+    const size = file.size;
+
+    // 计算出当前文件一共需要切割成多少份
+    const total = Math.ceil(size/shareSize);
+
+    // 代表已经发送了多少份
+    let index = 0;
+
+    // 用于上传一部分的文件
+    async function upload(){
+      const start = shareSize * index;
+      const end = shareSize * (index + 1)>size?size:shareSize * (index + 1);
+
+      // 切割需要的数据,准备发送
+      const data = file.slice(start,end);
+
+      const formData = new FormData();
+
+      formData.append('hash',hash);
+      formData.append('data',data);
+      formData.append('total',total);
+      formData.append('index',index);
+      formData.append('filename',filename);
+
+      const result = await axios.post('/uploadVideo',formData);
+
+      index++;
+
+      if(index<total){
+        // 进入这里说明文件还没有上传结束
+
+        $('#process').text(result.data.process)
+        upload();
+        // console.log(result)
+      }else{
+        // 进入这里说明文件已经上传结束
+        // console.log('成功了',result)
+        $('#videoContent').css('visibility','visible');
+        $('#video').attr('src',result.data.videoUrl);
+        $('#process').text(result.data.msg)
+
+      }
+    }
+
+    upload();
+  }
+
+  function getHash(file){
+    // 读取文件是一个异步的操作,时间根据文件大小是不一定的
+    // 所以我们故意生成一个Promise对象,
+    // 如果这个对象状态为成功就说明hash生成了,反之就是还没成功
+    return new Promise((resolve)=>{
+      // 浏览器自带FileReader函数,可以生成一个文件读取器
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload=function(e){
+        // console.log(e.target.result)
+        // 将文件的base64字符串,编译出一个唯一的hash值
+        const hash = hex_md5(e.target.result);
+        // console.log(hash)
+        resolve(hash);
+      }
+    })
+  }
+```
+
+##  Vue相关
+
+###  需求：将所有组件的配置对象，内部的a属性值全部+1
+
+回答：可以通过Vue的自定义合并策略，来对所有组件的配置对象进行统一的修改操作
+
+```js
+Vue.config.optionMergeStrategies.a = function (parent, child, vm) {
+  return child + 1
+}
+```
+
+###  请问，你在项目开发的过程中，是如何捕获到出现的错误的？
+
+​	扩展：错误边界 -> 其实就是如何捕获报错
+
+回答：
+
+​	1、try...catch...
+
+​		好用，但是只能捕获一部分代码的报错
+
+​	2、Promise的catch方法
+
+​		好用，但是只能捕获promise的报错
+
+​	3、生命周期errorCaptured
+
+​		一般，他只能捕获后代组件中出现的报错
+
+​	4、全局配置Vue.config.errorHandler
+
+​		很好用，可以捕获整个项目中出现的报错
+
+###  进阶需求：请问，你在项目上线之后，是如何知道出现了哪些报错的？
+
+回答：
+
+我们可以在项目中，使用以上的四种方法来捕获出现的报错信息，在回调函数中，使用ajax技术，将错误信息全部发送至公司的指定服务器或是接口中，最终项目组，会将BUG汇总到BUG日志平台中，
+
+###  请问项目上线之后，出现了BUG，你会怎么做
+
+回答：
+
+1、如果该BUG与金钱相关，那么立马回退版本，让用户先使用旧版项目，再开始解决维护BUG，等BUG解决之后，再次上线
+
+2、如果该BUG与金钱无关，那么就先解决BUG，再上线就行
+
+##  响应式相关
+
+###  数据驱动：
+
+我们开发者不需要再关注于DOM节点的查找和操作，我们只需要关心数据的变化，只要我们修改了数据，Vue就会自动找到对应的DOM节点进行修改
+
+###  请问什么是响应式属性？什么是非响应式属性？
+
+响应式属性：当开发者修改该属性的值，会导致页面重新渲染，然后显示出最新的结果
+
+非响应式属性：当开发者修改该属性的值，没有导致页面重新渲染，显示的依旧是上次的数据
+
+###  响应式创建时机
+
+1、当组件初始化的时候，data中所有的属性都会被数据劫持，变成响应式属性
+
+**注意：只要是data中存在的属性，会全部变成响应式的**
+
+2、如果给一个响应式属性赋值，而且属性值是一个对象数据类型，那么这个对象中所有的属性，都会经过数据劫持操作，全部变成响应式属性
+
+**注意：赋值的时候，有哪些属性，这些就全是响应式属性，后续新增的都是非响应式属性**
+
+###  如何快速分辨一个属性是否是响应式属性？
+
+直接打印有该属性的对象，如果属性值是(...)，那么说明当前属性是响应式属性
+
+###  如何额外添加响应式属性？
+
+1、Vue.set(target,key/index,value)
+
+2、this.$set(target,key/index,value)
+
+3、Vue.observable(object)
+
+###  删除属性如何具有响应式效果？
+
+1、Vue.delete(target,key/index)
+
+2、this.$delete(target,key/index)
+
+
+
+##  nextTick相关
+
+###  请问Vue更新数据是同步更行还是异步更新？
+
+回答：同步更新数据，
+
+​	所以我们可以放心使用数据，每次使用都一定是当前最新
+
+###  请问vue更新DOM是同步更新还是异步更新？
+
+回答：异步更新DOM
+
+###  nextTick是什么？
+
+他是Vue提供的一个函数
+
+###  nectTick的作用
+
+nextTick可以接收一个回调函数
+
+该回调函数，会被延迟到DOM更新之后才会执行
+
+换种说法：在这个回调函数中，可以获取到最新的DOM节点
+
+```js
+this.$nextTick(回调函数)
+```
+
+###  使用场景
+
+比如说SPU模块的添加属性功能的编辑模式切换可以使用
+
+###  nextTick原理
+
+nextTick内部肯定有异步任务
+
+​	通过代码的观察，可以知道他内部一定是微任务
+
+​	Vue中的nextTick其实用的是.then实现的
+
+###  流程总结：
+
+1、如果开发者调用nextTick
+
+​	那么nextTick会使用callback数组，收集开发者传入的所有的回调函数
+
+2、如果是第一次调用nextTick，就会开启一个nextTick专用的微任务(其实就是.then)
+
+后续调用nextTick不会再开启新的微任务
+
+扩展：也就是说，只有在本次nextTick的回调函数全部执行结束之后，才有可能开启新的微任务
+
+3、在nextTick专用的微任务中，vue会遍历callbacks数组，取出内部所有的回调函数。依次执行
+
+##  mixin混入
+
+全局混入：
+
+```js
+Vue.mixin({
+  mounted() {
+    console.log('全局混入',this.$options.name)
+  }
+})
+```
+
+局部混入：
+
+```js
+import moveMixin from '@/mixins/moveMixin'
+
+export default {
+  name: 'App',
+  mixins:[moveMixin]
+}
+```
+
+###  需求：在所有组件挂载结束之后，打印他们的name属性值
+
+解决方案：
+
+可以使用混入来解决这个需求
+
+混入分为两种：全局混入，局部混入
+
+全局混入中写的内容，可以注入到每个组件实例上，
+
+局部混入需要在组件的配置对象上添加mixins属性，然后传入局部混合内容，这样该混合的内容，就会只作用于当前这个组件
+
+
+
+如果全局/局部混入还有组件都写了同一个生命周期，他们三者的回调函数会共存，执行顺序：全局混入>局部混入>组件内部
+
+
+
+如果全局/局部混入还有组件中的data,props,computed,watch,methods等出现冲突，那么优先级：组件内置>局部混入>全局混入
+
+##  请问computed和watch的区别
+
+1、相同点
+
+​	他们都可以监视某个数据的变化，如果数据变化了就执行对应的回调函数
+
+2、不同点
+
+​	使用场景：
+
+​		computed：我需要一个数据，可惜我手头没有，但是我可以根据现有的数据，计算得到
+
+​		例如：购物车的总价/总数等
+
+​		watch：如果有一个数据发生变化之后，我需要做一些事情
+
+​		例如：三级分类列表，如果用户选中了一级分类的某个选项，那么我就会使用这个选项数据请求二级列表
+
+总结：computed更注重于结果，watch更注重于过程
+
+​	computed的返回值是可以显示在页面上的，而watch的返回值没有任何作用
+
+
+
+缓存：
+
+computed具有缓存，如果监视的数据没有发生变化，那么computed就会复用上次的结果
+
+
+
+属性名的含义不同
+
+​	computed的属性名其实就是计算属性的使用名称
+
+​	watch的属性名其实是代表他想要监视哪个数据
